@@ -6,7 +6,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(extract);
-our $VERSION = '1.0';
+our $VERSION = '1.1';
 
 #Declare global variables
 our @factoids;
@@ -323,6 +323,7 @@ Lingua::NL::FactoidExtractor - A tool for extracting factoids from Dutch texts
 
 =head1 SYNOPSIS
 
+print <<"END";
 use strict;
 use lib "./lib";
 use Lingua::NL::FactoidExtractor;
@@ -332,61 +333,68 @@ my $verbose = 1; #boolean
 my $factoids = extract($inputfile,$verbose);
 
 print $factoids;
-
+END
 
 =head1 PREREQUISITES
 
-The Dutch Alpino-parser is a prerequisite for this module. Alpino is available under the conditions of the Gnu Lesser General Public License. See L<www.let.rug.nl/vannoord/alp/Alpino/>
+=begin html
+The Dutch parser Alpino is a prerequisite for this module. Alpino is available under the conditions of the Gnu Lesser General Public License. See <a href="http://www.let.rug.nl/vannoord/alp/Alpino/" target="_blank">the Alpino homepage</a><br>
+=end html
 
 =head1 DESCRIPTION
 
-We developed a tool that extracts structured facts (I<factoids>) from running text. A factoid is a tuple of four elements: subject, verb, object and modifiers, in which the verb has been lemmatized and the object and modifier slots may be empty. As input, the factoid extractor takes text that has been syntactically parsed with the Dutch parser Alpino. 
-
+=begin html
+We developed a tool that extracts structured facts (<i>factoids</i>) from running text. A factoid is a tuple of four elements: subject, verb, object and modifiers, in which the verb has been lemmatized and the object and modifier slots may be empty. As input, the factoid extractor takes text that has been syntactically parsed with the Dutch parser Alpino. <br>
+<br>
 It is straightforward to extract factoids from active main clauses that have been annotated with syntactic relations, because these relations can be directly transformed into the factoid structure, e.g.
+<br>
+"Rembrandt schilderde vooral veel Bijbelse taferelen"<br>
+<i>Rembrandt painted mainly many Biblical scenes</i><br>
+<code>|Rembrandt|schilder|veel Bijbelse taferelen|vooral</code><br>
+<br>
 
-"Rembrandt schilderde vooral veel Bijbelse taferelen"
-I<Rembrandt painted mainly many Biblical scenes>
-C<|Rembrandt|schilder|veel Bijbelse taferelen|vooral>
+However, around 30% of the clauses in Wikipedia are passive clauses, and in many cases a person is referred to by a pronoun. We want to ensure that "A number of family members were painted by Rembrandt" gives the same factoid as "Rembrandt painted a number of family members" and that for "Rembrandt painted Biblical scenes" the same factoid is generated as for "Rembrandt, who painted Biblical scenes". For cases like these, our factoid extractor performs a number of transformations to the input clauses. We implemented the following transformations:<br>
+<br>
+<ul>
+<li> <b>Passive-to-active</b>: Passive clauses are transformed to active clauses, in which the subject from the passive clause takes the object position. If there is no actor in the sentence, the subject slot is filled with the empty actor 'MEN' (<i>ONE<i>).<br>
+"De luchthaven werd op 8 juli 1964 geopend"<br>
+<i>The airport was opened on July 8th, 1964</i><br>
+<code>MEN|open|de luchthaven|op 8 juli 1964</code><br>
 
-However, around 30% of the clauses in Wikipedia are passive clauses, and in many cases a person is referred to by a pronoun. We want to ensure that "A number of family members were painted by Rembrandt" gives the same factoid as "Rembrandt painted a number of family members" and that for "Rembrandt painted Biblical scenes" the same factoid is generated as for "Rembrandt, who painted Biblical scenes". For cases like these, our factoid extractor performs a number of transformations to the input clauses. We implemented the following transformations:
+<li> <b>Modifier-to-subject</b>: If a passive clause contains a modifier starting with 'door' (<i>by</i>) then this modifier is moved to the subject slot, e.g.<br>
+"De instrumenten werden opnieuw ingespeeld door de bandleden"<br>
+<i>The instruments were recorded again by the band members"</i><br>
+<code>de bandleden|speel_in|de instrumenten|opnieuw</c><br>
 
-=item * B<Passive-to-active>: Passive clauses are transformed to active clauses, in which the subject from the passive clause takes the object position. If there is no actor in the sentence, the subject slot is filled with the empty actor 'MEN' (I<ONE>).
-"De luchthaven werd op 8 juli 1964 geopend"
-I<The airport was opened on July 8th, 1964>
-C<MEN|open|de luchthaven|op 8 juli 1964>
+<li> <b>Copula-to-definition</b>: If the verb of a clause is a copular verb (e.g. <i>become</i>), then the object of the clause is considered to be a description of the subject. These factoids are transformed to definitions with the verb <i>IS</i>.<br>
+"Rome werd opnieuw de hoofdstad van Itali&euml<br>
+<i>Rome became the capital of Italy again</i><br>
+<code>Rome|IS|de hoofdstad van ItaliE<euml>|opnieuw</code><br>
 
-=item * B<Modifier-to-subject>: If a passive clause contains a modifier starting with 'door' (\emph{by}) then this modifier is moved to the subject slot, e.g.
-"De instrumenten werden opnieuw ingespeeld door de bandleden"
-I<The instruments were recorded again by the band members">
-C<de bandleden|speel_in|de instrumenten|opnieuw>
+<li> <b>Double-object-to-definition</b>: For clauses that have two objects, a factoid is generated that connects both objects, e.g.<br>
+"De behandeling van Crohn wordt symptomatisch genoemd"<br>
+<i>The treatment of Crohn's disease is called symptomatic</i><br>
+<code>de behandeling van Crohn|IS|symptomatisch|</code><br>
 
-=item * B<Copula-to-definition>: If the verb of a clause is a copular verb (e.g. I<become>), then the object of the clause is considered to be a description of the subject. These factoids are transformed to definitions with the verb I<IS>.
-"Rome werd opnieuw de hoofdstad van ItaliE<euml>
-I<Rome became the capital of Italy again>
-C<Rome|IS|de hoofdstad van ItaliE<euml>|opnieuw>
+<li> <b>Pron-to-np</b>: If the subject or object of a clause is a relative pronoun, then we substitute it by the most recent noun phrase. This is a very local form of anaphora resolution.<br>
+"De voornaamste vertegenwoordiger was Rembrandt, die veel Bijbelse taferelen schilderde."<br>
+<i>The main representative was Rembrandt, who painted many Biblical scenes.</i><br>
+<code>de voornaamste vertegenwoordiger|IS|Rembrandt<br>
+Rembrandt|schilder|veel Bijbelse taferelen|</code><br>
+</ul>
+<br>
+For sentences that consist of multiple clauses, multiple factoids are generated, e.g.<br>
+<br>
+"Voor de onafhankelijkheid was Bangalore een belangrijke industriestad; meer recent is het een belangrijk centrum van de informatietechnologie in India geworden en wordt het wel de Silicon Valley van India genoemd."<br>
+<i>Before its independence, Bangalore was an important industry town; more recently it became an important centre of information technology in India and it is called the Silicon Valley of India.</i><br>
+<code>Bangalore|IS|een belangrijke industriestad|Voor de onafhankelijkheid<br>
+het|IS|een belangrijk centrum van de informatietechnologie in India|meer recent<br>
+MEN|noem|het &amp; de Silicon Valley van India|meer recent &amp; wel<br>
+het|IS|de Silicon Valley van India</code>
 
-=item * B<Double-object-to-definition>: For clauses that have two objects, a factoid is generated that connects both objects, e.g.
-"De behandeling van Crohn wordt symptomatisch genoemd"
-I<The treatment of Crohn's disease is called symptomatic>
-C<de behandeling van Crohn|IS|symptomatisch|>
+=end html
 
-=item * B<Pron-to-np>: If the subject or object of a clause is a relative pronoun, then we substitute it by the most recent noun phrase. This is a very local form of anaphora resolution.
-"De voornaamste vertegenwoordiger was Rembrandt, die veel Bijbelse taferelen schilderde."
-I<The main representative was Rembrandt, who painted many Biblical scenes.>
-C<de voornaamste vertegenwoordiger|IS|Rembrandt>
-C<{Rembrandt|schilder|veel Bijbelse taferelen|>
-
-For sentences that consist of multiple clauses, multiple factoids are generated, e.g.
-
-"Voor de onafhankelijkheid was Bangalore een belangrijke industriestad; meer recent is het een belangrijk centrum van de informatietechnologie in India geworden en wordt het wel de Silicon Valley van India genoemd."
-I<Before its independence, Bangalore was an important industry town; more recently it became an important centre of information technology in India and it is called the Silicon Valley of India.>
-C<Bangalore|IS|een belangrijke industriestad|Voor de onafhankelijkheid
-het|IS|een belangrijk centrum van de informatietechnologie in India|meer recent
-MEN|noem|het \& de Silicon Valley van India|meer recent \& wel
-het|IS|de Silicon Valley van India>
-
-
-=head1 KNOWN PROBLEMS
+=head1 KNOWN ISSUES
 
 If punctuation such as a full stop or a comma is glued to a word in the Alpino output
 then this punctuation also ends up in the factoids extracted from the sentence.
