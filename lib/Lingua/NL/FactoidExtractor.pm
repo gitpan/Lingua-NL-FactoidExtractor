@@ -6,7 +6,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(extract);
-our $VERSION = '1.1';
+our $VERSION = '1.2';
 
 #Declare global variables
 our @factoids;
@@ -323,23 +323,19 @@ Lingua::NL::FactoidExtractor - A tool for extracting factoids from Dutch texts
 
 =head1 SYNOPSIS
 
-print <<"END";
-use strict;
-use lib "./lib";
-use Lingua::NL::FactoidExtractor;
+    use strict;
+    use lib "./lib";
+    use Lingua::NL::FactoidExtractor;
 
-my $inputfile = "alpino.xml";
-my $verbose = 1; #boolean
-my $factoids = extract($inputfile,$verbose);
+    my $inputfile = "alpino.xml";
+    my $verbose = 1; #boolean
+    my $factoids = extract($inputfile,$verbose);
 
-print $factoids;
-END
+    print $factoids;
 
 =head1 PREREQUISITES
 
-=begin html
-The Dutch parser Alpino is a prerequisite for this module. Alpino is available under the conditions of the Gnu Lesser General Public License. See <a href="http://www.let.rug.nl/vannoord/alp/Alpino/" target="_blank">the Alpino homepage</a><br>
-=end html
+The Dutch parser Alpino is a prerequisite for this module. Alpino is available under the conditions of the Gnu Lesser General Public License. See L<The Alpino Home Page|http://www.let.rug.nl/vannoord/alp/Alpino/>.
 
 =head1 DESCRIPTION
 
@@ -356,7 +352,7 @@ It is straightforward to extract factoids from active main clauses that have bee
 However, around 30% of the clauses in Wikipedia are passive clauses, and in many cases a person is referred to by a pronoun. We want to ensure that "A number of family members were painted by Rembrandt" gives the same factoid as "Rembrandt painted a number of family members" and that for "Rembrandt painted Biblical scenes" the same factoid is generated as for "Rembrandt, who painted Biblical scenes". For cases like these, our factoid extractor performs a number of transformations to the input clauses. We implemented the following transformations:<br>
 <br>
 <ul>
-<li> <b>Passive-to-active</b>: Passive clauses are transformed to active clauses, in which the subject from the passive clause takes the object position. If there is no actor in the sentence, the subject slot is filled with the empty actor 'MEN' (<i>ONE<i>).<br>
+<li> <b>Passive-to-active</b>: Passive clauses are transformed to active clauses, in which the subject from the passive clause takes the object position. If there is no actor in the sentence, the subject slot is filled with the empty actor 'MEN' (<i>ONE</i>).<br>
 "De luchthaven werd op 8 juli 1964 geopend"<br>
 <i>The airport was opened on July 8th, 1964</i><br>
 <code>MEN|open|de luchthaven|op 8 juli 1964</code><br>
@@ -364,7 +360,7 @@ However, around 30% of the clauses in Wikipedia are passive clauses, and in many
 <li> <b>Modifier-to-subject</b>: If a passive clause contains a modifier starting with 'door' (<i>by</i>) then this modifier is moved to the subject slot, e.g.<br>
 "De instrumenten werden opnieuw ingespeeld door de bandleden"<br>
 <i>The instruments were recorded again by the band members"</i><br>
-<code>de bandleden|speel_in|de instrumenten|opnieuw</c><br>
+<code>de bandleden|speel_in|de instrumenten|opnieuw</code><br>
 
 <li> <b>Copula-to-definition</b>: If the verb of a clause is a copular verb (e.g. <i>become</i>), then the object of the clause is considered to be a description of the subject. These factoids are transformed to definitions with the verb <i>IS</i>.<br>
 "Rome werd opnieuw de hoofdstad van Itali&euml<br>
@@ -387,6 +383,7 @@ For sentences that consist of multiple clauses, multiple factoids are generated,
 <br>
 "Voor de onafhankelijkheid was Bangalore een belangrijke industriestad; meer recent is het een belangrijk centrum van de informatietechnologie in India geworden en wordt het wel de Silicon Valley van India genoemd."<br>
 <i>Before its independence, Bangalore was an important industry town; more recently it became an important centre of information technology in India and it is called the Silicon Valley of India.</i><br>
+<br>
 <code>Bangalore|IS|een belangrijke industriestad|Voor de onafhankelijkheid<br>
 het|IS|een belangrijk centrum van de informatietechnologie in India|meer recent<br>
 MEN|noem|het &amp; de Silicon Valley van India|meer recent &amp; wel<br>
@@ -404,7 +401,7 @@ before parsing the sentence.
 
 =head1 AUTHOR
 
-Suzan Verberne, http://sverberne.ruhosting.nl
+Suzan Verberne, L<http://sverberne.ruhosting.nl>
 
 =head1 COPYRIGHT AND LICENSE
 
