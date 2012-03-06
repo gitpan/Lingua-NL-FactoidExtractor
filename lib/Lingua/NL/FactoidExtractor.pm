@@ -6,7 +6,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(extract);
-our $VERSION = '1.2';
+our $VERSION = '1.3';
 
 #Declare global variables
 our @factoids;
@@ -363,9 +363,9 @@ However, around 30% of the clauses in Wikipedia are passive clauses, and in many
 <code>de bandleden|speel_in|de instrumenten|opnieuw</code><br>
 
 <li> <b>Copula-to-definition</b>: If the verb of a clause is a copular verb (e.g. <i>become</i>), then the object of the clause is considered to be a description of the subject. These factoids are transformed to definitions with the verb <i>IS</i>.<br>
-"Rome werd opnieuw de hoofdstad van Itali&euml<br>
+"Rome werd opnieuw de hoofdstad van Itali&euml;<br>
 <i>Rome became the capital of Italy again</i><br>
-<code>Rome|IS|de hoofdstad van ItaliE<euml>|opnieuw</code><br>
+<code>Rome|IS|de hoofdstad van Itali&euml;<euml>|opnieuw</code><br>
 
 <li> <b>Double-object-to-definition</b>: For clauses that have two objects, a factoid is generated that connects both objects, e.g.<br>
 "De behandeling van Crohn wordt symptomatisch genoemd"<br>
@@ -411,5 +411,8 @@ This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.7 or,
 at your option, any later version of Perl 5 you may have available.
 
+=head1 CREDITS
+
+This work was funded by Google by means of a European Digital Humanities Award.
 
 =cut

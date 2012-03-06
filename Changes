@@ -9,3 +9,6 @@ Revision history for Perl extension Lingua::NL::FactoidExtractor.
 
 1.2 Mon Mar 5 2012
 	- corrected POD documentation
+
+1.3 Tue Mar 6 2012
+	- added funding credits
