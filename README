@@ -1,4 +1,4 @@
-Lingua-NL-FactoidExtractor version 1.3
+Lingua-NL-FactoidExtractor version 1.4
 ======================================
 
 This module extracts structured facts (factoids) from running text. A factoid is a tuple 

@@ -6,25 +6,32 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(extract);
-our $VERSION = '1.3';
+our $VERSION = '1.4';
 
 #Declare global variables
 our @factoids;
 
+my @functionwords=("alle","alles","andere","anderen","beide","dat","deze","dezelfde","die","dingen","dit","een","geen","hem","hen","het","hij","ieder","iedereen","iemand","iets","ik","je","jij","meer","men","mensen","niemand","niets","ons","sommige","sommigen","u","veel","vele","velen","waaraan","waaronder","wat","we","weinig","welke","wie","wij","ze","zich","zichzelf","zij","zijn","zo","zoveel");
+my %functionwords = map { $_ => 1 } @functionwords;
+# We do not save factoids of which the subject is only a pronoun 
+
 # Package variables needed for reading the xml input
-my($id, $level, %rel, %word, %root, %level, %cat, %lcat, %head, %sc, %index, %begin, %wh, %ids_for_index, @ids, %clauses_done);
-my $sentence_initial = 0; # boolean
-my $doctitle = "";
+my($level, %rel, %word, %root, %level, %frame, %cat, %lcat, %head, %sc, %index, %begin, %wh, %ids_for_index, @ids, %clauses_done);
+my $sentence_initial; # boolean
+my $doctitle;
 
 sub extract ($$) {
   my ($inputfile,$verbose) = @_;
 
+  undef @factoids; 
+  undef %rel; undef %word; undef %root; undef %level; undef %frame; undef %cat; undef %lcat; undef %head; undef %sc; undef %index; undef %begin; undef %wh;
+  undef %ids_for_index; undef @ids; undef %clauses_done;
+ 
+  $level = 0;
+  $sentence_initial = 0;
+  $doctitle = "";
   print STDERR "Parsing $inputfile...\n";
-    
-  my @functionwords=("alle","alles","andere","anderen","beide","dat","deze","dezelfde","die","dingen","dit","een","geen","hem","hen","het","hij","ieder","iedereen","iemand","iets","ik","je","jij","meer","men","mensen","niemand","niets","ons","sommige","sommigen","u","veel","vele","velen","waaraan","waaronder","wat","we","weinig","welke","wie","wij","ze","zich","zichzelf","zij","zijn","zo","zoveel");
-  my %functionwords = map { $_ => 1 } @functionwords;
-  # We do not save factoids of which the subject is only a pronoun 
-
+  
   open (ALP,"< $inputfile") or die "$! $inputfile\n";
 
   while (my $line=<ALP>) {
@@ -44,6 +51,11 @@ sub extract ($$) {
 	my $rel=$1;
 	$rel{$id} = $rel;
     }
+    if ($line =~ / frame=\"([^\"]+)\"/) {
+        my $frame=$1;
+        $frame{$id} = $frame;
+    }
+
     if ($line =~ / cat=\"([^\"]+)\"/) {
         my $cat=$1;
         $cat{$id} = $cat;
@@ -129,6 +141,7 @@ sub _generate_factoid($$) {
     # with the same subject as the main clause
 
     my @headed_ids = _get_headed_ids($clause_id);
+    #print STDERR "headed ids for clause $clause_id: @headed_ids\n";
     my $voice="active";
     my $verb_type="";
     my $tuple_type="factoid";
@@ -141,10 +154,15 @@ sub _generate_factoid($$) {
 	    $voice = "passive";
 	}
 	my $rel = $rel{$id};
+	my $frame="";
+	if (defined $frame{$id}) {
+	    $frame = $frame{$id};
+	}
 	
-	if ($rel eq "hd" && $verb eq "") {
+	if ($rel eq "hd" && $verb eq "" && $frame =~ /verb/) {
 	    # if the verb slot was not yet filled with a main verb
 	    #$verb = "hd:".$word{$id};
+	    #print STDERR "hd: $id\n";
 	    $verb = "hd:".$root{$id}; 
 	    $verb_type = $sc{$id};
 	    # use root (lemma) of verb
@@ -168,6 +186,7 @@ sub _generate_factoid($$) {
 	    }
 	} elsif ($rel =~ /^(mod|pc|predm|ld)$/) {
 	    my $modifier = "$1:".&_get_constituent($id);
+	    #print STDERR "Mod: $modifier\n";
 	    push (@modifiers,$modifier);
 	} 
 	
@@ -210,12 +229,13 @@ sub _generate_factoid($$) {
     }
  
     # resolve relative pronouns: replace die/dat/wat by the most recent NP.
-    if ($subject =~ /:(die|dat|wat) *$/i) {
-       my $head_id = &_get_recent_cat_id($subj_id,"np");
+    if ($subject =~ /:(die|dat|wat) *$/i && defined($subj_id)) {
+	#print STDERR "Get recent cat id for subject id $subj_id ($subject)\n";
+        my $head_id = &_get_recent_cat_id($subj_id,"np");
         $subject = "su:".&_get_constituent($head_id);
         $info .= "pron-to-np ";
     }
-    if ($object =~ /:(die|dat|wat) *$/i) {
+    if ($object =~ /:(die|dat|wat) *$/i && defined($obj_id)) {
         my $head_id = &_get_recent_cat_id($obj_id,"np");
         $object = "obj:".&_get_constituent($head_id);
         $info .= "pron-to-np ";
@@ -238,7 +258,8 @@ sub _generate_factoid($$) {
     my $factoid = "<$tuple_type id='$clause_id' subj='$subject' verb='$verb' obj='$object' mods='$modifiers' topic='$doctitle'> # $info";
     $factoid = &_clean_up($factoid);
     
-    if ($verb eq "" or ($object eq "" && not defined ($modifiers[0]) && $verb_type =~ /(aux|passive)/)) {
+    #print STDERR "Verb type: $verb_type\n";
+    if ($verb eq "" or (($object eq "") && (not defined $modifiers[0]) && ($verb_type =~ /(aux|passive)/))) {
 	# throw away empty passives for which the sub clause has been raised, e.g. ("Dit rijk wordt")
     } else {
 	push(@factoids,$factoid);
@@ -277,8 +298,16 @@ sub _get_constituent($) {
 sub _get_recent_cat_id($$) {
     my ($id,$search_cat) = @_;
     my $head_id = $id;
-    while ($cat{$head_id} ne $search_cat && $head_id > 0) {
+    my $cat_of_head_id="";
+    if (defined $cat{$head_id}) {
+	$cat_of_head_id = $cat{$head_id};
+    } elsif (defined $lcat{$head_id}) {
+	$cat_of_head_id = $lcat{$head_id};
+    }
+    #print STDERR "Head id: $head_id, Search cat: $search_cat\n";
+    while ($cat_of_head_id ne $search_cat && $head_id > 0) {
 	$head_id--;
+        #print STDERR "Head id: $head_id\n";
     }
     if ($head_id == 0 && $cat{$head_id} ne $search_cat){
 	# if no note of type search_cat was found before then the original id is returned
@@ -294,9 +323,10 @@ sub _get_headed_ids($) {
     my @headed_ids;
     my $id = $head_id;
     $id++;
+    push(@headed_ids,$id) if ($level{$id} == $headlevel+1);
     while ($id < $ids[-1] && $level{$id} > $headlevel) {
-        push(@headed_ids,$id) if ($level{$id} == $headlevel+1);
         $id++;
+        push(@headed_ids,$id) if ($level{$id} == $headlevel+1);
     }
     return @headed_ids;
 }
@@ -331,7 +361,7 @@ Lingua::NL::FactoidExtractor - A tool for extracting factoids from Dutch texts
     my $verbose = 1; #boolean
     my $factoids = extract($inputfile,$verbose);
 
-    print $factoids;
+    print "$factoids\n";
 
 =head1 PREREQUISITES
 
